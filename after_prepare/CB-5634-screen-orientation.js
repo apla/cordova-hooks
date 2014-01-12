@@ -5,19 +5,9 @@ var fs      = require ('fs');
 var path    = require ('path');
 var cordova = require ('cordova');
 
-var cordova_util  = require('cordova/src/util');
-var projectRoot   = cordova_util.isCordova(process.cwd());
-var projectXml    = cordova_util.projectConfig(projectRoot);
-var projectConfig = new cordova_util.config_parser(projectXml);
+var hookLib = require (path.join (__dirname, '..', 'me.apla.cordova-hooks.js'));
 
-var orientation = "default";
-
-projectConfig.preference.get().some (function (preference) {
-	if (preference.name == "orientation") {
-		orientation = preference.value;
-		return true;
-	}
-});
+var orientation = hookLib.getPreference ("orientation") || "default";
 
 console.log ("orientation is: " + orientation);
 
@@ -33,7 +23,6 @@ var config = {
 		},
 		processor: function (node, orientation, config) {
 			var attr = node.attr ({
-				// "http://schemas.android.com/apk/res/android",
 				"android:screenOrientation":
 				config.values[orientation]
 			});
@@ -50,7 +39,34 @@ var config = {
 		},
 		processor: function (node, orientation, config) {
 			var attr = node.attr ({
-				// "http://schemas.android.com/apk/res/android",
+				Orientation: config.values[orientation][0],
+				SupportedOrientations: config.values[orientation][1]
+			});
+		}
+	},
+	ios: {
+		fileName: "{$projectName}-Info.plist",
+		values: {
+			"": ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown", "UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
+			default: ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown", "UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
+			"portrait-handset": ["UIDeviceOrientationPortrait"],
+			portrait: ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown"],
+			landscape: ["UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
+		},
+		processor: function (doc, orientation, config) {
+			var targetDevice = hookLib.getPreference ("target-device");
+			if ((targetDevice != "tablet" || targetDevice != "handset") && orientation != "default") {
+				console.warn ("If you targeting both tablet and handset, then you probably need to set different device orientations for every target type");
+			}
+			var orientations = config[orientation + '-' + targetDevice] || config[orientation];
+
+			doc["UISupportedInterfaceOrientations"] = orientations;
+			doc["UISupportedInterfaceOrientations~ipad"] = orientations;
+
+			// set UISupportedInterfaceOrientations
+			// 
+			// UIDeviceOrientationLandscapeRight
+			var attr = node.attr ({
 				Orientation: config.values[orientation][0],
 				SupportedOrientations: config.values[orientation][1]
 			});
@@ -58,54 +74,42 @@ var config = {
 	}
 };
 
-var platform = "android";
-var configFileName = path.resolve ("platforms", platform, config[platform].fileName);
+var projectConfig = hookLib.getCordovaConfig();
+var dict = {
+	projectName: projectConfig.name(),
+	projectId: projectConfig.packageName(),
+	version: projectConfig.version()
+};
 
-console.log ("setting "+platform+" orientation");
+var platformNames = fs.readdirSync("platforms");
+platformNames.forEach (function (platformName) {
+	if (!(platformName in config))
+		return;
 
-if (config[platform].xpath) {
-	var doc = parseXML (configFileName);
-	var node = getNodeByXPath (doc, config[platform].xpath);
+	var platformConf = config[platformName];
 
-	config[platform].processor (node, orientation, config[platform]);
+	var fileName = platformConf.fileName.replace (/{\$([^}]+)}/, function (match, p1) {
+		return dict[p1];
+	});
 
-	fs.writeFileSync (configFileName, doc.toString(false));
-}
+	console.log ("setting "+platformName+" orientation via " + fileName);
 
-var platform = "wp8";
-var configFileName = path.resolve ("platforms", platform, config[platform].fileName);
+	var configFileName = path.resolve ("platforms", platformName, fileName);
 
-console.log ("setting "+platform+" orientation");
+	if (platformConf.xpath) {
+		var doc = hookLib.parseXML (configFileName);
+		var node = hookLib.getNodeByXPath (doc, platformConf.xpath);
 
-if (config[platform].xpath) {
-	var doc = parseXML (configFileName);
-	var node = getNodeByXPath (doc, config[platform].xpath);
+		platformConf.processor (node, orientation, platformConf);
 
-	config[platform].processor (node, orientation, config[platform]);
+		fs.writeFileSync (configFileName, doc.toString(false));
+	} else if (platformName == "ios") {
+		var doc = hookLib.parsePlist (configFileName);
 
-	fs.writeFileSync (configFileName, doc.toString(false));
-}
+		platformConf.processor (doc, orientation, platformConf);
 
+		console.log (doc);
+	}
 
-function parseXML (configFileName) {
-	var configContents = fs.readFileSync (configFileName);
+});
 
-	var doc = libxml.parseXmlString (configContents);
-	return doc;
-}
-
-function getNodeByXPath (doc, xpath) {
-	var root = doc.root();
-
-	var allNS = {};
-
-	root.namespaces().forEach(function(ns, index) {
-		allNS[ns.prefix()] = ns.href();
-	})
-
-	console.log (allNS);
-
-	var node = doc.get (xpath, allNS);
-
-	return node;
-}
