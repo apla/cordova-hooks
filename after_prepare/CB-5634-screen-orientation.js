@@ -1,6 +1,7 @@
 #!/bin/env node
 
 var libxml  = require ('libxmljs');
+var plist   = require('plist');
 var fs      = require ('fs');
 var path    = require ('path');
 var cordova = require ('cordova');
@@ -45,7 +46,7 @@ var config = {
 		}
 	},
 	ios: {
-		fileName: "{$projectName}-Info.plist",
+		fileName: "{$projectName}/{$projectName}-Info.plist",
 		values: {
 			"": ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown", "UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
 			default: ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown", "UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
@@ -58,18 +59,10 @@ var config = {
 			if ((targetDevice != "tablet" || targetDevice != "handset") && orientation != "default") {
 				console.warn ("If you targeting both tablet and handset, then you probably need to set different device orientations for every target type");
 			}
-			var orientations = config[orientation + '-' + targetDevice] || config[orientation];
+			var orientations = this.values[orientation + '-' + targetDevice] || this.values[orientation];
 
 			doc["UISupportedInterfaceOrientations"] = orientations;
 			doc["UISupportedInterfaceOrientations~ipad"] = orientations;
-
-			// set UISupportedInterfaceOrientations
-			// 
-			// UIDeviceOrientationLandscapeRight
-			var attr = node.attr ({
-				Orientation: config.values[orientation][0],
-				SupportedOrientations: config.values[orientation][1]
-			});
 		}
 	}
 };
@@ -88,7 +81,8 @@ platformNames.forEach (function (platformName) {
 
 	var platformConf = config[platformName];
 
-	var fileName = platformConf.fileName.replace (/{\$([^}]+)}/, function (match, p1) {
+	var dictRe = new RegExp ("{\\$([^}]+)}", 'g');
+	var fileName = platformConf.fileName.replace (dictRe, function (match, p1) {
 		return dict[p1];
 	});
 
@@ -108,7 +102,8 @@ platformNames.forEach (function (platformName) {
 
 		platformConf.processor (doc, orientation, platformConf);
 
-		console.log (doc);
+		// console.log (doc);
+		fs.writeFileSync (configFileName, plist.build(doc).toString());
 	}
 
 });

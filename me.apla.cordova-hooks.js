@@ -11,11 +11,14 @@ module.exports = {
 			var projectRoot = cordova_util.isCordova(process.cwd());
 			var projectXml  = cordova_util.projectConfig(projectRoot);
 			this.projectConfig = new cordova_util.config_parser(projectXml);
+			console.log ("Loaded project config for " + this.projectConfig.name());
 		}
 		return this.projectConfig;	
 	},
 	getPreferences: function (preferenceNames, singleVar) {
 		var projectConfig = this.getCordovaConfig();
+
+		
 
 		if (typeof preferenceNames == "string") {
 			preferenceNames = [preferenceNames];
@@ -28,8 +31,9 @@ module.exports = {
 		});
 
 		projectConfig.preference.get().forEach (function (preferenceNode) {
-			if (preferenceNode.name in preferenceNames) {
-				result[preferenceName] = preferenceNode.value;
+			if (preferenceNode.name in result) {
+				result[preferenceNode.name] = new String (preferenceNode.value);
+				// result[preferenceNode.name].targetDevice = preferenceNode["gap:target-device"];
 			}
 		});
 
@@ -40,7 +44,7 @@ module.exports = {
 		return result;
 	},
 	getPreference: function (preferenceName) {
-		this.getPreferences (preferenceName, true);
+		return this.getPreferences (preferenceName, true);
 	},
 	parseXML: function (configFileName) {
 		var configContents = fs.readFileSync (configFileName);
