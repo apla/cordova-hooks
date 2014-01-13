@@ -48,11 +48,11 @@ var config = {
 	ios: {
 		fileName: "{$projectName}/{$projectName}-Info.plist",
 		values: {
-			"": ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown", "UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
-			default: ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown", "UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
-			"portrait-handset": ["UIDeviceOrientationPortrait"],
-			portrait: ["UIDeviceOrientationPortrait", "UIDeviceOrientationPortraitUpsideDown"],
-			landscape: ["UIDeviceOrientationLandscapeRight", "UIDeviceOrientationLandscapeLeft"],
+			"": ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeRight", "UIInterfaceOrientationLandscapeLeft"],
+			default: ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeRight", "UIInterfaceOrientationLandscapeLeft"],
+			"portrait-handset": ["UIInterfaceOrientationPortrait"],
+			portrait: ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown"],
+			landscape: ["UIInterfaceOrientationLandscapeRight", "UIInterfaceOrientationLandscapeLeft"],
 		},
 		processor: function (doc, orientation, config) {
 			var targetDevice = hookLib.getPreference ("target-device");
